@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="fr" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>SimuImmo - Simulateur Immobilier & Emprunt</title>
+  
+  <!-- iOS PWA / Web App Capabilities -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SimuImmo">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#2563eb">
+  
+  <!-- Apple Touch Icons & Web App Manifest Link -->
+  <link rel="apple-touch-icon" href="https://placehold.co/180x180/2563eb/ffffff.png?text=SimuImmo">
+  <link rel="icon" type="image/png" href="https://placehold.co/64x64/2563eb/ffffff.png?text=SI">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            iosBlue: '#007AFF',
+            iosGreen: '#34C759',
+            iosOrange: '#FF9500',
+            iosPurple: '#AF52DE',
+            iosDarkBg: '#000000',
+            iosCardDark: '#1c1c1e'
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Arial', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* iOS Touch Ergonomics & Styling */
+    * {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    input, textarea, button {
+      user-select: auto;
+    }
+    /* Prevent auto-zoom on iPhone when clicking inputs */
+    input[type="number"], input[type="text"] {
+      font-size: 16px !important;
+    }
+    /* Custom Range Sliders iOS Style */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-track {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(156, 163, 175, 0.3);
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 24px;
+      width: 24px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      margin-top: -9px;
+      cursor: pointer;
+    }
+    .dark input[type=range]::-webkit-slider-thumb {
+      background: #f3f4f6;
+    }
+    /* Safe Area Padding for iPhone Notch & Bottom Home Bar */
+    .pt-safe { padding-top: max(1rem, env(safe-area-inset-top)); }
+    .pb-safe { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
+    /* Glassmorphism */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .dark .glass-card {
+      background: rgba(28, 28, 30, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    /* Hide scrollbars */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+
+<body class="bg-slate-100 dark:bg-black text-slate-900 dark:text-slate-100 transition-colors duration-200 min-h-screen pt-safe pb-32 font-sans antialiased">
+
+  <header class="px-4 py-3 sticky top-0 z-30 glass-card border-b border-slate-200/80 dark:border-slate-800/80">
+    <div class="max-w-xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-black text-lg shadow-md shadow-blue-500/20">
+          S
+        </div>
+        <div>
+          <h1 class="text-base font-bold leading-tight tracking-tight">SimuImmo</h1>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Calculateur Débridé iOS</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Share Native iOS Button -->
+        <button onclick="shareApp()" class="w-9 h-9 rounded-full bg-slate-200/70 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 active:scale-95 transition" title="Partager">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+        </button>
+
+        <!-- Dark Mode Toggle -->
+        <button id="themeToggle" onclick="toggleDarkMode()" class="w-9 h-9 rounded-full bg-slate-200/70 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 active:scale-95 transition" title="Thème">
+          <svg id="themeIconSun" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+          <svg id="themeIconMoon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div id="pwaBanner" class="px-4 mt-3 max-w-xl mx-auto hidden">
+    <div class="p-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 relative overflow-hidden flex items-start gap-3">
+      <div class="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+      </div>
+      <div class="flex-1 text-xs">
+        <div class="flex items-center justify-between">
+          <p class="font-bold text-sm">Installer sur l'écran d'accueil</p>
+          <button onclick="dismissPwaBanner()" class="text-white/80 hover:text-white p-1">✕</button>
+        </div>
+        <p class="mt-0.5 opacity-90">Pour l'utiliser comme une vraie app iPhone : appuie sur <span class="font-bold underline">Partager</span> <svg class="w-3.5 h-3.5 inline text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg> puis sur <span class="font-bold underline">« Sur l'écran d'accueil »</span>.</p>
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-xl mx-auto px-4 mt-4 space-y-5">
+
+    <div class="grid grid-cols-2 gap-3">
+      <!-- Main Budget Card -->
+      <div class="col-span-2 p-4 rounded-3xl bg-white dark:bg-iosCardDark border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden">
+        <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Budget Bien Immobiler Est.</span>
+        <div id="kpiPropertyBudget" class="text-3xl font-black text-blue-600 dark:text-blue-400 mt-0.5 tracking-tight">0 €</div>
+        <div class="flex justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+          <span class="text-slate-500 dark:text-slate-400">Capital Empruntable :</span>
+          <span id="kpiCapital" class="font-bold text-slate-800 dark:text-slate-200">0 €</span>
+        </div>
+      </div>
+
+      <!-- Interest Card -->
+      <div class="p-3.5 rounded-2xl bg-white dark:bg-iosCardDark border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Coût Intérêts</span>
+        <div id="kpiInterests" class="text-lg font-extrabold text-amber-600 dark:text-amber-400 mt-0.5">0 €</div>
+        <span id="kpiInterestPercent" class="text-[10px] text-slate-400 block mt-0.5">0% du prêt</span>
+      </div>
+
+      <!-- Insurance Card -->
+      <div class="p-3.5 rounded-2xl bg-white dark:bg-iosCardDark border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Coût Assurance</span>
+        <div id="kpiInsurance" class="text-lg font-extrabold text-purple-600 dark:text-purple-400 mt-0.5">0 €</div>
+        <span id="kpiInsurancePercent" class="text-[10px] text-slate-400 block mt-0.5">0% du prêt</span>
+      </div>
+    </div>
+
+    <div class="p-4 rounded-3xl bg-white dark:bg-iosCardDark border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
+        <h2 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+          Paramètres du Crédit
+        </h2>
+        <button onclick="resetDefaults()" class="text-xs text-blue-600 dark:text-blue-400 font-semibold active:opacity-70 transition">Réinitialiser</button>
+      </div>
+
+      <!-- 1. Mensualité -->
+      <div class="space-y-1.5">
+        <div class="flex justify-between items-center">
+          <label for="numMonthly" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Mensualité (€/mois)</label>
+          <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <button onclick="adjustValue('numMonthly', -25)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold active:scale-90 transition flex items-center justify-center">-</button>
+            <input type="number" id="numMonthly" value="1050" class="w-20 text-center bg-transparent border-none font-extrabold text-blue-600 dark:text-blue-400 focus:outline-none">
+            <button onclick="adjustValue('numMonthly', 25)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold active:scale-90 transition flex items-center justify-center">+</button>
+          </div>
+        </div>
+        <input type="range" id="rangeMonthly" min="100" max="5000" step="25" value="1050" class="w-full">
+      </div>
+
+      <!-- 2. Durée du Prêt -->
+      <div class="space-y-1.5">
+        <div class="flex justify-between items-center">
+          <label for="numYears" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Durée (années)</label>
+          <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <button onclick="adjustValue('numYears', -1)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold active:scale-90 transition flex items-center justify-center">-</button>
+            <input type="number" id="numYears" value="20" class="w-16 text-center bg-transparent border-none font-extrabold text-slate-800 dark:text-slate-100 focus:outline-none">
+            <button onclick="adjustValue('numYears', 1)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold active:scale-90 transition flex items-center justify-center">+</button>
+          </div>
+        </div>
+        <input type="range" id="rangeYears" min="1" max="35" step="1" value="20" class="w-full">
+      </div>
+
+      <!-- 3. Taux d'intérêt nominal -->
+      <div class="space-y-1.5">
+        <div class="flex justify-between items-center">
+          <label for="numRate" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Taux Nominal (%)</label>
+          <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <button onclick="adjustValue('numRate', -0.05)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold active:scale-90 transition flex items-center justify-center">-</button>
+            <input type="number" id="numRate" step="0.05" value="3.5" class="w-16 text-center bg-transparent border-none font-extrabold text-slate-800 dark:text-slate-100 focus:outline-none">
+            <button onclick="adjustValue('numRate', 0.05)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold active:scale-90 transition flex items-center justify-center">+</button>
+          </div>
+        </div>
+        <input type="range" id="rangeRate" min="0.1" max="10" step="0.05" value="3.5" class="w-full">
+      </div>
+
+      <!-- 4. Taux d'assurance -->
+      <div class="space-y-1.5">
+        <div class="flex justify-between items-center">
+          <label for="numInsurance" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Taux Assurance (%)</label>
+          <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <button onclick="adjustValue('numInsurance', -0.05)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold active:scale-90 transition flex items-center justify-center">-</button>
+            <input type="number" id="numInsurance" step="0.01" value="0.3" class="w-16 text-center bg-transparent border-none font-extrabold text-slate-800 dark:text-slate-100 focus:outline-none">
+            <button onclick="adjustValue('numInsurance', 0.05)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold active:scale-90 transition flex items-center justify-center">+</button>
+          </div>
+        </div>
+        <input type="range" id="rangeInsurance" min="0" max="2" step="0.05" value="0.3" class="w-full">
+      </div>
+
+      <!-- 5. Apport Personnel -->
+      <div class="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div class="flex justify-between items-center">
+          <label for="numDeposit" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Apport Personnel (€)</label>
+          <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <button onclick="adjustValue('numDeposit', -1000)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold active:scale-90 transition flex items-center justify-center">-</button>
+            <input type="number" id="numDeposit" value="20000" class="w-20 text-center bg-transparent border-none font-extrabold text-emerald-600 dark:text-emerald-400 focus:outline-none">
+            <button onclick="adjustValue('numDeposit', 1000)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold active:scale-90 transition flex items-center justify-center">+</button>
+          </div>
+        </div>
+        <input type="range" id="rangeDeposit" min="0" max="200000" step="1000" value="20000" class="w-full">
+      </div>
+
+      <!-- 6. Frais de Notaire -->
+      <div class="space-y-1.5">
+        <div class="flex justify-between items-center text-xs font-semibold">
+          <span class="text-slate-700 dark:text-slate-300">Frais Notaire</span>
+          <div class="flex gap-1.5">
+            <button onclick="setNotaryRate(7.5)" class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 active:bg-blue-600 active:text-white rounded-lg text-[11px] font-bold transition">Ancien (7.5%)</button>
+            <button onclick="setNotaryRate(2.5)" class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 active:bg-blue-600 active:text-white rounded-lg text-[11px] font-bold transition">Neuf (2.5%)</button>
+          </div>
+        </div>
+        <input type="hidden" id="numNotary" value="7.5">
+      </div>
+
+      <!-- TAEG Summary -->
+      <div class="p-2.5 bg-blue-50 dark:bg-blue-950/40 rounded-2xl flex justify-between items-center text-xs">
+        <span class="font-medium text-blue-900 dark:text-blue-200">TAEG / Taux Global Est. :</span>
+        <span id="taegValue" class="font-black text-blue-600 dark:text-blue-400 text-sm">3.80 %</span>
+      </div>
+    </div>
+
+    <div class="p-4 rounded-3xl bg-white dark:bg-iosCardDark border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Répartition du Coût Total</h3>
+        <button onclick="exportChartPNG()" class="text-xs text-blue-600 dark:text-blue-400 font-semibold">Télécharger Image</button>
+      </div>
+      <div class="relative w-full h-52">
+        <canvas id="costBreakdownChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Duration Comparison Chart -->
+    <div class="p-4 rounded-3xl bg-white dark:bg-iosCardDark border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+      <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Capacité Selon la Durée</h3>
+      <div class="relative w-full h-48">
+        <canvas id="durationComparisonChart"></canvas>
+      </div>
+    </div>
+
+    <div class="p-4 rounded-3xl bg-white dark:bg-iosCardDark border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+      <div class="flex justify-between items-center">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Tableau d'Amortissement</h3>
+          <p class="text-[11px] text-slate-500">Aperçu annuel</p>
+        </div>
+        <button onclick="exportAmortizationCSV()" class="px-3 py-1.5 bg-emerald-600 active:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+          Exporter CSV
+        </button>
+      </div>
+
+      <div class="overflow-x-auto max-h-60 overflow-y-auto rounded-2xl border border-slate-100 dark:border-slate-800">
+        <table class="w-full text-xs text-left">
+          <thead class="text-[10px] text-slate-500 uppercase bg-slate-50 dark:bg-slate-800 sticky top-0">
+            <tr>
+              <th class="px-3 py-2">Année</th>
+              <th class="px-3 py-2">Intérêts</th>
+              <th class="px-3 py-2">Amorti</th>
+              <th class="px-3 py-2">Restant</th>
+            </tr>
+          </thead>
+          <tbody id="amortizationTableBody" class="divide-y divide-slate-100 dark:divide-slate-800">
+            <!-- Dynamic Content -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs px-4 py-2.5 rounded-full shadow-lg backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 z-50">
+    Lien copié dans le presse-papier !
+  </div>
+
+  <script>
+    // Theme Switcher
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      document.getElementById('themeIconSun').classList.toggle('hidden', !isDark);
+      document.getElementById('themeIconMoon').classList.toggle('hidden', isDark);
+      updateChartsTheme();
+    }
+
+    // Touch Stepper Adjuster (+ / - buttons)
+    function adjustValue(inputId, delta) {
+      const el = document.getElementById(inputId);
+      let val = parseFloat(el.value) || 0;
+      val = Math.max(0, val + delta);
+      
+      // Formatting logic for decimals
+      if (inputId === 'numRate' || inputId === 'numInsurance') {
+        el.value = val.toFixed(2);
+      } else {
+        el.value = Math.round(val);
+      }
+      
+      const rangeEl = document.getElementById(inputId.replace('num', 'range'));
+      if (rangeEl) rangeEl.value = el.value;
+      
+      recalculate();
+    }
+
+    // Input-Slider Synchronization
+    const inputPairs = ['Monthly', 'Years', 'Rate', 'Insurance', 'Deposit'];
+    inputPairs.forEach(key => {
+      const numEl = document.getElementById('num' + key);
+      const rangeEl = document.getElementById('range' + key);
+
+      if (numEl && rangeEl) {
+        numEl.addEventListener('input', () => { rangeEl.value = numEl.value; recalculate(); });
+        rangeEl.addEventListener('input', () => { numEl.value = rangeEl.value; recalculate(); });
+      }
+    });
+
+    function setNotaryRate(rate) {
+      document.getElementById('numNotary').value = rate;
+      recalculate();
+    }
+
+    function resetDefaults() {
+      document.getElementById('numMonthly').value = 1050;
+      document.getElementById('rangeMonthly').value = 1050;
+      document.getElementById('numYears').value = 20;
+      document.getElementById('rangeYears').value = 20;
+      document.getElementById('numRate').value = 3.5;
+      document.getElementById('rangeRate').value = 3.5;
+      document.getElementById('numInsurance').value = 0.3;
+      document.getElementById('rangeInsurance').value = 0.3;
+      document.getElementById('numDeposit').value = 20000;
+      document.getElementById('rangeDeposit').value = 20000;
+      document.getElementById('numNotary').value = 7.5;
+      recalculate();
+    }
+
+    // Calculation Engine
+    function calculateCapacity(monthly, ratePercent, insurancePercent, years) {
+      const totalMonthlyRate = (ratePercent + insurancePercent) / 100 / 12;
+      const totalMonths = years * 12;
+      if (totalMonthlyRate <= 0) return monthly * totalMonths;
+      return Math.round(monthly * ((1 - Math.pow(1 + totalMonthlyRate, -totalMonths)) / totalMonthlyRate));
+    }
+
+    let currentAmortizationData = [];
+
+    function recalculate() {
+      const monthly = parseFloat(document.getElementById('numMonthly').value) || 0;
+      const years = parseFloat(document.getElementById('numYears').value) || 1;
+      const rate = parseFloat(document.getElementById('numRate').value) || 0;
+      const insurance = parseFloat(document.getElementById('numInsurance').value) || 0;
+      const deposit = parseFloat(document.getElementById('numDeposit').value) || 0;
+      const notaryRate = parseFloat(document.getElementById('numNotary').value) || 0;
+
+      const capital = calculateCapacity(monthly, rate, insurance, years);
+      const totalPaid = monthly * years * 12;
+
+      const totalInsurance = Math.round(capital * (insurance / 100) * years);
+      const totalInterests = Math.max(0, Math.round(totalPaid - capital - totalInsurance));
+      const grossBudget = capital + deposit;
+      const estimatedNotaryFees = Math.round(grossBudget * (notaryRate / 100));
+      const maxPropertyPrice = Math.max(0, grossBudget - estimatedNotaryFees);
+
+      // Update KPIs
+      document.getElementById('kpiCapital').innerText = `${capital.toLocaleString('fr-FR')} €`;
+      document.getElementById('kpiPropertyBudget').innerText = `${maxPropertyPrice.toLocaleString('fr-FR')} €`;
+      document.getElementById('kpiInterests').innerText = `${totalInterests.toLocaleString('fr-FR')} €`;
+      document.getElementById('kpiInsurance').innerText = `${totalInsurance.toLocaleString('fr-FR')} €`;
+      document.getElementById('taegValue').innerText = `${(rate + insurance).toFixed(2)} %`;
+
+      document.getElementById('kpiInterestPercent').innerText = capital > 0 ? `${((totalInterests / capital) * 100).toFixed(1)}% du prêt` : '0%';
+      document.getElementById('kpiInsurancePercent').innerText = capital > 0 ? `${((totalInsurance / capital) * 100).toFixed(1)}% du prêt` : '0%';
+
+      updateCostBreakdownChart(capital, totalInterests, totalInsurance, deposit);
+      updateDurationChart(monthly, rate, insurance);
+      generateAmortizationSchedule(capital, rate, insurance, years, monthly);
+    }
+
+    // Amortization Schedule Generator
+    function generateAmortizationSchedule(capital, nominalRate, insuranceRate, years, totalMonthly) {
+      const tbody = document.getElementById('amortizationTableBody');
+      tbody.innerHTML = '';
+      currentAmortizationData = [];
+
+      let remainingBalance = capital;
+      const monthlyNominalRate = nominalRate / 100 / 12;
+      const monthlyInsuranceCost = (capital * (insuranceRate / 100)) / 12;
+
+      for (let y = 1; y <= years; y++) {
+        let yearInterests = 0;
+        let yearCapital = 0;
+
+        for (let m = 1; m <= 12; m++) {
+          if (remainingBalance <= 0) break;
+          const interestPayment = remainingBalance * monthlyNominalRate;
+          const capitalPayment = Math.min(remainingBalance, totalMonthly - interestPayment - monthlyInsuranceCost);
+
+          yearInterests += interestPayment;
+          yearCapital += Math.max(0, capitalPayment);
+          remainingBalance = Math.max(0, remainingBalance - capitalPayment);
+        }
+
+        currentAmortizationData.push({ year: y, interests: Math.round(yearInterests), capitalPaid: Math.round(yearCapital), remaining: Math.round(remainingBalance) });
+
+        const row = document.createElement('tr');
+        row.className = 'border-b border-slate-100 dark:border-slate-800 text-[11px]';
+        row.innerHTML = `
+          <td class="px-3 py-2 font-bold">An ${y}</td>
+          <td class="px-3 py-2 text-amber-600 dark:text-amber-400 font-medium">${Math.round(yearInterests).toLocaleString('fr-FR')} €</td>
+          <td class="px-3 py-2 text-emerald-600 dark:text-emerald-400 font-medium">${Math.round(yearCapital).toLocaleString('fr-FR')} €</td>
+          <td class="px-3 py-2 font-semibold text-slate-700 dark:text-slate-300">${Math.round(remainingBalance).toLocaleString('fr-FR')} €</td>
+        `;
+        tbody.appendChild(row);
+      }
+    }
+
+    function exportAmortizationCSV() {
+      if (!currentAmortizationData.length) return;
+      let csv = "Annee;Interets (€);Capital Amorti (€);Restant Du (€)\n";
+      currentAmortizationData.forEach(r => { csv += `${r.year};${r.interests};${r.capitalPaid};${r.remaining}\n`; });
+      
+      const link = document.createElement("a");
+      link.href = encodeURI("data:text/csv;charset=utf-8," + csv);
+      link.download = "amortissement_simulation.csv";
+      link.click();
+    }
+
+    // Chart.js Configuration
+    let breakdownChart, durationChart;
+
+    function initCharts() {
+      const ctx1 = document.getElementById('costBreakdownChart').getContext('2d');
+      breakdownChart = new Chart(ctx1, {
+        type: 'doughnut',
+        data: {
+          labels: ['Capital', 'Intérêts', 'Assurance', 'Apport'],
+          datasets: [{ data: [1, 1, 1, 1], backgroundColor: ['#007AFF', '#FF9500', '#AF52DE', '#34C759'], borderWidth: 0 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+          cutout: '65%'
+        }
+      });
+
+      const ctx2 = document.getElementById('durationComparisonChart').getContext('2d');
+      durationChart = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: ['10 ans', '15 ans', '20 ans', '25 ans', '30 ans'],
+          datasets: [{ label: 'Capital (€)', data: [0, 0, 0, 0, 0], backgroundColor: '#007AFF', borderRadius: 6 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { ticks: { font: { size: 9 }, callback: v => v/1000 + 'k€' } }, x: { ticks: { font: { size: 10 } } } }
+        }
+      });
+    }
+
+    function updateCostBreakdownChart(capital, interests, insurance, deposit) {
+      if (!breakdownChart) return;
+      breakdownChart.data.datasets[0].data = [capital, interests, insurance, deposit];
+      breakdownChart.update();
+    }
+
+    function updateDurationChart(monthly, rate, insurance) {
+      if (!durationChart) return;
+      durationChart.data.datasets[0].data = [10, 15, 20, 25, 30].map(y => calculateCapacity(monthly, rate, insurance, y));
+      durationChart.update();
+    }
+
+    function updateChartsTheme() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const textColor = isDark ? '#94a3b8' : '#64748b';
+      if (breakdownChart) { breakdownChart.options.plugins.legend.labels.color = textColor; breakdownChart.update(); }
+      if (durationChart) { durationChart.options.scales.y.ticks.color = textColor; durationChart.options.scales.x.ticks.color = textColor; durationChart.update(); }
+    }
+
+    function exportChartPNG() {
+      const link = document.createElement('a');
+      link.download = 'graphique_simulation.png';
+      link.href = breakdownChart.toBase64Image();
+      link.click();
+    }
+
+    // iOS Native Web Share API
+    function shareApp() {
+      if (navigator.share) {
+        navigator.share({
+          title: 'SimuImmo - Simulateur Emprunt',
+          text: 'Calcule ta capacité d\'emprunt immobilier instantanément !',
+          url: window.location.href
+        }).catch(() => {});
+      } else {
+        const input = document.createElement('input');
+        input.value = window.location.href;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        
+        const toast = document.getElementById('toast');
+        toast.classList.remove('opacity-0', 'pointer-events-none');
+        setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 2500);
+      }
+    }
+
+    // PWA iOS Banner Logic
+    function checkPwaBanner() {
+      const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+      const isDismissed = localStorage.getItem('pwa_dismissed');
+      if (!isStandalone && !isDismissed) {
+        document.getElementById('pwaBanner').classList.remove('hidden');
+      }
+    }
+
+    function dismissPwaBanner() {
+      document.getElementById('pwaBanner').classList.add('hidden');
+      localStorage.setItem('pwa_dismissed', 'true');
+    }
+
+    window.onload = function() {
+      initCharts();
+      recalculate();
+      checkPwaBanner();
+    };
+  </script>
+</body>
+</html>
